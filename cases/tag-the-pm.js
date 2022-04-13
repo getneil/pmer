@@ -4,10 +4,11 @@ const axios = require('axios');
 
 // this are position ids of issues in gitlab they might be different depending on your swimlane setup
 // position_id:message
-const stages = {
-  123290: "please test on dev - [this is a bot generated message]",
-  123157: "please test on staging - [this is a bot generated message]",
-  1763: "please test on prod - [this is a bot generated message]"
+
+const tags = {
+  'Test on Dev': 'please test on dev - [this is a bot generated message]',
+  'Test on Staging': 'please test on staging - [this is a bot generated message]',
+  'Test on Prod': 'please test on prod - [this is a bot generated message]',
 }
 
 const instance = axios.create({
@@ -18,13 +19,13 @@ const instance = axios.create({
 
 module.exports = async (body) => {
   try {
-    const { current } = getPositions(body)
+    const tag = getTestTag(body.changes.labels)
     const issuePath = `/projects/${body.project.id}/issues/${body.object_attributes.iid}`
     const discussionPath = `${issuePath}/discussions`
 
     await instance.post(discussionPath, null, {
       params: {
-        body: `@${process.env.PM_GITLAB_TAG} ${stages[current]}`
+        body: `@${process.env.PM_GITLAB_TAG} ${tags[tag]}`
       }
     })
     await instance.put(issuePath, {
@@ -41,8 +42,19 @@ module.exports = async (body) => {
 
 // should return bool if this should be processed by the main fn 
 module.exports.valid = (body) => {
-  const { previous, current } = getPositions(body)
-  return previous && current && previous !== current && stages[current];
+  return getTestTag(body.changes.labels || {});
 }
 
 const getPositions = (body) => _.get(body, "changes.relative_position", {});
+
+const getTestTag = (labels = {}) => {
+  const { previous = [], current = [] } = labels;
+  const expectedTags = Object.keys(tags)
+  const currentTags = current.map((c) => c.title)
+  const activeTag = currentTags.filter((t) => expectedTags.includes(t))[0]
+  if (activeTag && !previous.find((p) => p.title === activeTag)) {
+    return activeTag;
+  } else {
+    return null;
+  }
+}
