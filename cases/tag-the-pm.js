@@ -28,12 +28,13 @@ module.exports = async (body) => {
         body: `@${process.env.PM_GITLAB_TAG} ${tags[tag]}`
       }
     })
-    await instance.put(issuePath, {
-      assignee_ids: [
-        ...body.object_attributes.assignee_ids,
-        process.env.PM_GITLAB_ID
-      ]
-    })
+    // do if you want to assign tasks
+    // await instance.put(issuePath, {
+    //   assignee_ids: [
+    //     ...body.object_attributes.assignee_ids,
+    //     process.env.PM_GITLAB_ID
+    //   ]
+    // })
  
   } catch (error) {
     console.error(error)
